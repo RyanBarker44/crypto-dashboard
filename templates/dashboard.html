@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="app">
+    <div class="container-fluid">
+        <div class="row d-flex justify-content-around">
+
+            <h5 class="row w-100 text-white font-weight-normal">Welcome, {{ profile_data.user_name.first }} {{ profile_data.user_name.last }}</h5>
+            
+            <div class="col-10">
+                <div class="row d-flex d-flex justify-content-around mx-5 my-3">
+                    <div class="col-7 card">
+                        Line graph (dropdown for each exchange? maybe a dropdown that controls all the cards)
+                        <div class="border-primary">
+							<canvas id="myChart"></canvas>
+						</div>
+                    </div>
+                    <div class="col-4 bg-info card">
+                        Pie graph
+                    </div>
+                </div>
+                <div class="row d-flex d-flex justify-content-around mx-5 my-3 text-center">
+                    <div class="col-7 card">
+                        <h5 class="font-weight-normal border-bottom p-2 m-5">Portfolio</h5>
+                        <div v-for="asset in {{ portfolio }}">
+                            <div class="p-2 border-top m-1 text-left">
+                                <% asset.code %> |
+                                <% asset.name %>
+                                <span class="text-right float-right">$<% asset.fiat_value %></span>
+                                <div class="text-right">
+                                    Balance: <% asset.balance %>
+                                </div>
+                            </div>
+                        </div>
+                     </div>
+                     <div class="col-4 bg-warning card">
+                         Deposits
+                         <div v-for="i in chartData">
+                             <% i %>
+                         </div>
+                     </div>
+                 </div>
+                <div class="row d-flex d-flex justify-content-around mx-5 my-3">
+                     <div class="col-11 bg-secondary card">Other stats</div>
+                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const app = new Vue({
+        el: '#app',
+        delimiters: ["<%", "%>"],
+        data: {
+            chartData: [100.0, 157.0, 345.0, 433.0, 675.0, 487.0, 300.0, 492.0],
+            chartLabels: [1, 2, 3, 4, 5, 6, 7, 8],
+            message: 'Hello Vue!'
+        },
+        methods: {
+            foo: function () {
+                this.message = 'bar'
+            }
+        },
+        async mounted() {
+
+            // Set the data for the chart
+            let chartData = {
+                labels: this.chartLabels,
+                datasets: [{
+                    backgroundColor: 'rgb(190, 232, 235)',
+                    borderColor: '#025679',
+                    borderDashOffset: 0.0,
+                    borderWidth: 1,
+                    data: this.chartData,
+                    label: 'O365 Audit Score',
+                    pointBorderColor: "rgb(0, 63, 89)",
+                    pointBackgroundColor: "rgb(0, 127, 178)",
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: "rgb(0, 127, 178)",
+                    pointHoverBorderColor: "rgb(0, 63, 89)",
+                    pointHoverBorderWidth: 3,
+                    pointRadius: 3,
+                    pointHitRadius: 10,
+                    spanGaps: false,
+                }]
+            };
+            console.log(chartData)
+
+            // Set the options for the chart
+            let chartOptions = {
+                responsive: true,
+                scales: {
+                    xAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Date'
+                        },
+                        type: 'time',
+                        time: {
+                            unit: 'month'
+                        }
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: '$ Balance'
+                        },
+                        ticks: {
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                        }
+                    }]
+                },
+                title: {
+                    display: true,
+                    text: 'My Portfolio'
+                },
+            };
+
+            // Initialise and attach the chart to the page
+            let ctx = document.getElementById('myChart');
+            console.log(ctx)
+            let myLineChart = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: chartOptions,
+            });
+            console.log(myLineChart)
+        }
+    })
+</script>
+{% endblock %}
