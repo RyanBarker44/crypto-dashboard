@@ -6,24 +6,26 @@
         <div class="row d-flex justify-content-around">
 
             <h5 class="row w-100 text-white font-weight-normal">Welcome, {{ profile_data.user_name.first }} {{ profile_data.user_name.last }}</h5>
-            
+            <% this.portfolio %>
             <div class="col-10">
                 <div class="row d-flex d-flex justify-content-around mx-5 my-3">
                     <div class="col-7 card">
                         Line graph (dropdown for each exchange? maybe a dropdown that controls all the cards)
                         <div class="border-primary">
-							<canvas id="myChart"></canvas>
+							<canvas id="lineChart"></canvas>
 						</div>
                     </div>
                     <div class="col-4 bg-info card">
                         Pie graph
+                        <canvas id="pieChart"></canvas>
                     </div>
                 </div>
                 <div class="row d-flex d-flex justify-content-around mx-5 my-3 text-center">
                     <div class="col-7 card">
-                        <h5 class="font-weight-normal border-bottom p-2 m-5">Portfolio</h5>
-                        <div v-for="asset in {{ portfolio }}">
-                            <div class="p-2 border-top m-1 text-left">
+                        <h3 class="font-weight-normal border-bottom p-2 m-5">Portfolio</h3>
+                        TOTAL: <% portfolio.total %>
+                        <div v-for="asset in {{ portfolio.coins }}">
+                            <div class="p-2 border-top m-1 mx-5 text-left">
                                 <% asset.code %> |
                                 <% asset.name %>
                                 <span class="text-right float-right">$<% asset.fiat_value %></span>
@@ -57,11 +59,22 @@
         data: {
             chartData: [100.0, 157.0, 345.0, 433.0, 675.0, 487.0, 300.0, 492.0],
             chartLabels: [1, 2, 3, 4, 5, 6, 7, 8],
-            message: 'Hello Vue!'
+            message: 'Hello Vue!',
+            portfolio: {{ portfolio|tojson }},
         },
         methods: {
             foo: function () {
                 this.message = 'bar'
+            },
+            getPieChartData: function () {
+                fetch('/getPieData', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                }).then((result) => {
+                    console.log(result)
+                })
             }
         },
         async mounted() {
@@ -124,14 +137,44 @@
             };
 
             // Initialise and attach the chart to the page
-            let ctx = document.getElementById('myChart');
-            console.log(ctx)
-            let myLineChart = new Chart(ctx, {
+            let lineChartEl = document.getElementById('lineChart');
+            let myLineChart = new Chart(lineChartEl, {
                 type: 'line',
                 data: chartData,
                 options: chartOptions,
             });
-            console.log(myLineChart)
+
+
+
+
+
+            // Pie graph
+            let data = {
+                datasets: [{
+                    label: "Portfolio",
+                    data: [10, 20, 30],
+                    backgroundColor: ["#3e95cd", "#8e5ea2","#3cba9f"],
+                }],
+                labels: ['Red','Yellow','Blue'],
+                options: {
+                    title: {
+                        display: true,
+                        text: 'Predicted world population (millions) in 2050'
+                    }
+                },
+
+                // These labels appear in the legend and in the tooltips when hovering different arcs
+            };
+
+            let pieChartEl = document.getElementById('pieChart');
+            var myPieChart = new Chart(pieChartEl, {
+                type: 'pie',
+                data: data,
+                // options: options
+            });
+        },
+        computed: {
+           // 
         }
     })
 </script>

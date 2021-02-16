@@ -1,5 +1,6 @@
 import api_settings
 import api_helpers.gecko_helper as gecko
+import collections
 import json
 import multiprocessing
 import os
@@ -9,10 +10,10 @@ from joblib import delayed, Parallel
 
 
 pp = pprint.PrettyPrinter(indent=1)
-n_threads = 10
+n_jobs = 10
 
 
-def build_asset_data(asset, market_asset_list, portfolio, semaphore):
+def build_asset_data(asset, market_asset_list, portfolio, gecko_all_coins, semaphore):
 	"""Fetch current price and return a dict containing base data for an asset"""
 
 	with semaphore:
@@ -24,21 +25,38 @@ def build_asset_data(asset, market_asset_list, portfolio, semaphore):
 		# Retrieve the matching asset's dict from the entire market data
 		asset_data = market_asset_list[asset['assetId']]
 
-		# Remove spaces from the name to match coin gecko's expectation
-		cleaned_coin_name = asset_data['name'].lower().replace(' ', '')
+		asset_ticker = asset_data['code'].lower()
 
 		# Init the base fields for the asset
 		cleaned_asset_data = {
 			'balance': available_balance,
-			'code': asset_data['code'],
+			'code': asset_ticker,
 			'fiat_value': available_balance,
-			'id': asset_data['id'],
 			'name': asset_data['name'],
+			'swyftx_id': asset_data['id'],
 		}
 
+		# Remove spaces from the name to match coin gecko's expectation
+		# cleaned_coin_name = (
+		# 	asset_data['name'].lower().replace(' ', ''), 
+		# 	asset_data['name'].lower().replace(' ', '-'), 
+		# 	asset_data['name'].lower().replace(' ', '.'),
+		# 	asset_data['name'].lower().replace('.', '-'),
+		# 	asset_data['name'].lower().replace('.', ' '),
+		# 	asset_data['name'].lower().replace('.', ''),
+		# 	asset_data['name'].lower() + '-protocol',
+		# )
+
 		try:
+			# print(gecko_all_coins)
+			print(asset_ticker, type(gecko_all_coins))
+			gecko_coin_data = gecko_all_coins[asset_ticker]
+			print(gecko_coin_data)
+
 			# Get current price info about the asset 
-			current_asset_price = gecko.get_current_price(cleaned_coin_name)
+			current_asset_price = gecko_coin_data["current_price"]
+			# current_asset_price = gecko.get_current_price(cleaned_coin_name, gecko_all_coins)
+			print(current_asset_price)
 
 			# Calculate the dollar value of the asset
 			fiat_value = available_balance * float(current_asset_price)
@@ -48,13 +66,13 @@ def build_asset_data(asset, market_asset_list, portfolio, semaphore):
 			cleaned_asset_data['fiat_value'] = fiat_value
 			cleaned_asset_data['price'] = current_asset_price
 
-		except ValueError as e:
+		except KeyError as e:
 			# If the ticker symbol is not found we leave the fiat value as the balance.
 			# This triggers for fiat currency
-			print(f"[*] No matching ticker found for {cleaned_coin_name}")
+			print(f"[*] No matching ticker found for {asset_ticker}")
 		
 		# Append our new asset dict to the users portfolio
-		portfolio.append(cleaned_asset_data)
+		portfolio['coins'][asset_data['code']] = cleaned_asset_data
 
 
 def get_access_token():
@@ -77,7 +95,13 @@ def get_asset_info(asset_code):
 	request_data = request_wrapper(f"/markets/info/basic/{asset_code}/")
 
 	return request_data
-	
+
+
+def get_detailed_asset_info(asset_code):
+	request_data = request_wrapper(f"/markets/info/detail/{asset_code}/")
+
+	return request_data
+
 
 def get_market_assets():
 	request_data = request_wrapper("/markets/assets/")
@@ -90,17 +114,40 @@ def get_portfolio_balance(market_asset_data, user_balance_data):
 	# Reformat the market data to have the coin id as the key 
 	market_asset_list = {asset['id']: asset for asset in market_asset_data}
 
-	portfolio = []
+	portfolio = {
+		'coins': {},
+		'total': 0
+	}
+
+	with open('api_helpers/gecko_data.txt') as json_file:
+		gecko_all_coins = json.load(json_file)
+	
+	if not gecko_all_coins:
+		raise Exception("Could not load gecko_data.txt")
 
 	# Itterate through the users balances and retrieve the names of the coins using the assetId
 	# Process each 'asset' and add to a list of results
-	semaphore = multiprocessing.Semaphore(1)
-	Parallel(n_jobs=1, backend="threading")(
-		delayed(build_asset_data)(asset, market_asset_list, portfolio, semaphore) for asset in user_balance_data
-	)
+	semaphore = multiprocessing.Semaphore(n_jobs)
+	Parallel(n_jobs=n_jobs, backend="threading")(
+		delayed(build_asset_data)(
+			asset, 
+			market_asset_list, 
+			portfolio, 
+			gecko_all_coins, 
+			semaphore
+	) for asset in user_balance_data)
 
-	portfolio = sorted(portfolio, key=lambda i: i['fiat_value'], reverse=True)
+	total = 0
+	for coin in portfolio['coins'].values():
+		print('\n\n', coin)
+		total += float(coin.get('fiat_value', 0))
 
+	portfolio['total'] = total
+
+	portfolio['coins'] = sorted(portfolio['coins'].values(), key=lambda i: i['fiat_value'], reverse=True)
+
+
+	print(portfolio, type(portfolio))
 	return portfolio
 
 
