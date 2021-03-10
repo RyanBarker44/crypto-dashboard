@@ -46,7 +46,7 @@ def get_current_price(tickers, gecko_all_coins, index=0):
 	raise
 
 
-def get_all_coin_data():
+def get_market_data():
 
 	def get_market_page(page_num):
 
@@ -89,6 +89,7 @@ def get_all_coin_data():
 
 
 def save_data(coin_list):
+	"""switch this to store in the db or even firebase"""
 
 	formatted_data = format_json_response(coin_list)
 

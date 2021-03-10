@@ -1,6 +1,8 @@
 Flask==0.11.1
 Flask-APScheduler==1.11.0
 joblib==0.16.0
+mysqlclient==2.0.3
+pandas==1.1.1
 pycoingecko==1.4.0
 python-dotenv==0.10.3
 requests==2.24.0

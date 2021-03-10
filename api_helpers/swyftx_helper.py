@@ -36,27 +36,11 @@ def build_asset_data(asset, market_asset_list, portfolio, gecko_all_coins, semap
 			'swyftx_id': asset_data['id'],
 		}
 
-		# Remove spaces from the name to match coin gecko's expectation
-		# cleaned_coin_name = (
-		# 	asset_data['name'].lower().replace(' ', ''), 
-		# 	asset_data['name'].lower().replace(' ', '-'), 
-		# 	asset_data['name'].lower().replace(' ', '.'),
-		# 	asset_data['name'].lower().replace('.', '-'),
-		# 	asset_data['name'].lower().replace('.', ' '),
-		# 	asset_data['name'].lower().replace('.', ''),
-		# 	asset_data['name'].lower() + '-protocol',
-		# )
-
 		try:
-			# print(gecko_all_coins)
-			print(asset_ticker, type(gecko_all_coins))
 			gecko_coin_data = gecko_all_coins[asset_ticker]
-			print(gecko_coin_data)
 
 			# Get current price info about the asset 
 			current_asset_price = gecko_coin_data["current_price"]
-			# current_asset_price = gecko.get_current_price(cleaned_coin_name, gecko_all_coins)
-			print(current_asset_price)
 
 			# Calculate the dollar value of the asset
 			fiat_value = available_balance * float(current_asset_price)
@@ -120,9 +104,9 @@ def get_portfolio_balance(market_asset_data, user_balance_data):
 	}
 
 	with open('api_helpers/gecko_data.txt') as json_file:
-		gecko_all_coins = json.load(json_file)
+		gecko_market_data = json.load(json_file)
 	
-	if not gecko_all_coins:
+	if not gecko_market_data:
 		raise Exception("Could not load gecko_data.txt")
 
 	# Itterate through the users balances and retrieve the names of the coins using the assetId
@@ -133,21 +117,17 @@ def get_portfolio_balance(market_asset_data, user_balance_data):
 			asset, 
 			market_asset_list, 
 			portfolio, 
-			gecko_all_coins, 
+			gecko_market_data, 
 			semaphore
 	) for asset in user_balance_data)
 
 	total = 0
 	for coin in portfolio['coins'].values():
-		print('\n\n', coin)
 		total += float(coin.get('fiat_value', 0))
 
 	portfolio['total'] = total
-
 	portfolio['coins'] = sorted(portfolio['coins'].values(), key=lambda i: i['fiat_value'], reverse=True)
 
-
-	print(portfolio, type(portfolio))
 	return portfolio
 
 
@@ -155,10 +135,8 @@ def get_profile():
 
 	request_data = request_wrapper("/user/")
 
-	user_name = request_data['user']['profile']['name']
-
 	response_data = {
-		'user_name': user_name, 
+		'user_name': request_data['user']['profile']['name'], 
 	}
 
 	return response_data
